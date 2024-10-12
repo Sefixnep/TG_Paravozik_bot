@@ -1,13 +1,18 @@
 from Auxiliary.utils import *
+from Auxiliary.llm import LLMModel
+
+print("Инициализация модели...")
+llm = LLMModel()
+print("Модель инициализирована!\n")
 
 
 # Custom functions for buttons
-def delete(_, message_tg):
+def delete(_, message_tg: telebot.types.Message):
     Message.botDeleteMessage(message_tg)
     # ничего не возращаем, чтобы дальше шло как с обычными кнопками
 
 
-def clear(_, message_tg):
+def clear(_, message_tg: telebot.types.Message):
     bot.clear_step_handler_by_chat_id(
         message_tg.chat.id)  # просто очищаем step_handler
     # ничего не возращаем, чтобы дальше шло как с обычными кнопками
@@ -20,7 +25,11 @@ def delete_clear(*args):
 
 
 # Custom functions for messages
-def ask_question(message_tg):
+
+# # Question
+
+# # # Ask
+def ask_question(message_tg: telebot.types.Message):
     clear(None, message_tg)
     Message.botDeleteMessage(message_tg)
 
@@ -29,8 +38,9 @@ def ask_question(message_tg):
     return True
 
 
-def answer_question(botMessage):
-    def wrapper(message_tg):
+# # # Answer
+def answer_question(botMessage: telebot.types.Message):
+    def wrapper(message_tg: telebot.types.Message):
         nonlocal botMessage
         Message.userSendLogger(message_tg)
         Message.botDeleteMessage(message_tg)
@@ -39,14 +49,16 @@ def answer_question(botMessage):
 
         # ML
         try:
-            is_question = True
+            question = message_tg.text
+            answer = llm(question)
+            embeding = llm.get_embedding(question)
 
-            if is_question:
-                question = message_tg.text
-                answer = 'ANSWER_MODEL'
-
-                Message(get_text_question_answer(question, answer),
-                        ((Button("Отправить", f"{question}_{answer.replace('_', '-')}_send"),),)).line(botMessage)
+            if not llm.is_question_inappropriate(question):
+                operations.record_QnA(question, answer, embeding)
+                Message(answer, ((Button("Отправить",
+                                         f"{question}_{answer.replace('_', '-')}_send"),),)).line(botMessage)
+            else:
+                Message(answer, ((button.question_again,), (button.close,),)).line(botMessage)
 
         except Exception as exception:
             print(f"Ошибка: {exception}")
@@ -55,8 +67,10 @@ def answer_question(botMessage):
 
     return wrapper
 
-def send_answer(botMessage, data, message_history):
-    def wrapper(message_tg):
+
+# # # Send
+def send_answer(botMessage: telebot.types.Message, data: list, message_history: telebot.types.Message):
+    def wrapper(message_tg: telebot.types.Message):
         nonlocal botMessage, data, message_history
         Message.userSendLogger(message_tg)
         Message.botDeleteMessage(message_tg)
@@ -100,9 +114,8 @@ def send_answer(botMessage, data, message_history):
 
             message_email_error.line(botMessage)
         else:
-            Message(f"{get_text_question_answer(*data)}\n\n"
-                              f"<i>Ответ был отправлен на email: <u>{email}</u></i>",
-                              ((button.close,),)).line(message_history)
+            Message(f"{answer}\n\n"
+                    f"<i>Ответ был отправлен на email: <u>{email}</u></i>").line(message_history)
 
     return wrapper
 
@@ -110,22 +123,27 @@ def send_answer(botMessage, data, message_history):
 # Buttons
 button = Button('', '')
 
+# Question
+Button("📝 Задать заново 📝", "question_again")
+
 # Cancel / close
-Button("✖️ Отменить ✖️", "cancel_question", func=delete_clear)
+Button("✖️ Отменить ✖️", "cancel", func=delete_clear)
 Button("✖️ Закрыть ✖️", "close", func=delete)
 
 # Messages
 
 # Start
-message_start = Message("<b>Привет, это бот Паравозик!</b>\n\n"
-                        "<i>Ты можешь задать мне вопрос, для этого <b>используй команду в меню</b> (слева снизу)</i>\n"
-                        "<i>Ответ на вопрос вы можете отправить на почту!</i>")
+message_start = Message("<b>Привет <USERNAME>, это бот Паравозик 🚂!</b>\n\n"
+                        "<i>Используй <b>команду в меню</b> чтобы задать вопрос</i>\n"
+                        "<i>Ответ на вопрос вы можете получить на почту</i>\n"
+                        "<i>Чтобы обновить базу знаний используй <b>команду в меню</b></i>")
 
 # Question
 
 # # Ask question
 message_question_ask = Message("<b>Напишите пожалуйста вопрос одним сообщением:</b>",
-                               ((button.cancel_question,),),
+                               ((button.cancel,),),
+                               button.question_again,
                                func=ask_question)
 
 # # Processing
@@ -138,7 +156,7 @@ message_question_answer_error = Message("<b>Ошибка генерации.</b>
 
 # # Get
 message_email_get = Message("<b>Напишите пожалуйста <u>email</u> пользователя</b>",
-                            ((button.cancel_question,),))
+                            ((button.cancel,),))
 
 # # Sending
 message_email_processing = Message("<b>Отправляем...</b>")

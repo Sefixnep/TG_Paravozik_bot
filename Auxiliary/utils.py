@@ -234,7 +234,7 @@ class Button:
 
 
 # Функция для отправки HTML письма
-def send_email(to_email, subject, html_content):
+def send_email(to_email: str, subject: str, html_content: str):
     msg = MIMEMultipart()
     msg['From'] = config.EMAIL_USER
     msg['To'] = to_email
@@ -248,10 +248,3 @@ def send_email(to_email, subject, html_content):
     server.login(config.EMAIL_USER, config.EMAIL_PASSWORD)
     server.sendmail(config.EMAIL_USER, to_email, msg.as_string())
     server.quit()
-
-
-def get_text_question_answer(question, answer):
-    return (f"<b><u>Вопрос:</u></b>\n"
-            f"<i>{question}</i>\n\n"
-            f"<b><u>Ответ:</u></b>\n"
-            f"{answer}")

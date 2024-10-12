@@ -1,4 +1,6 @@
+import json
 import sqlite3
+import numpy as np
 from Auxiliary import config
 
 
@@ -12,6 +14,15 @@ def creating_tables():
         CREATE TABLE IF NOT EXISTS "callback_data" (
             "callback" TEXT NOT NULL UNIQUE,
             "data" TEXT NOT NULL PRIMARY KEY UNIQUE
+        );
+        """)
+
+    # Создание таблицы "QnA", если она не существует
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS "QnA" (
+            "question" TEXT NOT NULL,
+            "answer" TEXT NOT NULL,
+            "embedding" TEXT NOT NULL
         );
         """)
 
@@ -59,6 +70,52 @@ def record_callback_data(callback: str | int, data: str):
     else:
         cursor.execute("UPDATE callback_data SET callback = ? WHERE data = ?",
                        (callback, data))
+
+    # Сохранение изменений
+    connection.commit()
+
+    # Закрытие соединения
+    connection.close()
+
+
+# QnA
+def get_QnA():
+    # Подключение к базе данных
+    connection = sqlite3.connect(config.Paths.DataBase)
+    cursor = connection.cursor()
+
+    # Выполнение запроса для получения всех вопросов и ответов
+    cursor.execute("SELECT question, answer, embedding FROM QnA")
+
+    # Получение всех данных в виде списка кортежей
+    qna_list = cursor.fetchall()
+
+    # Проверка на случай, если qna_list пустой
+    if qna_list:
+        questions, answers, embeddings = map(list, zip(*qna_list))
+
+        embeddings = np.array([json.loads(embedding) for embedding in embeddings])
+    else:
+        questions, answers, embeddings = [], [], np.array([])
+
+    # Закрытие соединения
+    connection.close()
+
+    return questions, answers, embeddings
+
+
+def record_QnA(question: str, answer: str, embedding: np.array):
+    # Подключение к базе данных
+    connection = sqlite3.connect(config.Paths.DataBase)
+    cursor = connection.cursor()
+
+    embedding = json.dumps(embedding.tolist())
+
+    # Вставка данных вопроса и ответа в таблицу
+    cursor.execute("""
+        INSERT INTO QnA (question, answer, embedding)
+        VALUES (?, ?, ?);
+    """, (question, answer, embedding))
 
     # Сохранение изменений
     connection.commit()

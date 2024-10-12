@@ -3,7 +3,7 @@ version = "1.0"
 
 # Bot
 Bot = "TG_Paravozik_bot"
-BOT_TOKEN = "8147503943:AAEgBy0ZbDQUuS9cAPMX3opeOvYo92gTVms"
+BOT_TOKEN = "8147503943:AAEoUum2Q05QazEVczEJIYGSxMY3LxBv_KM"
 
 length_callback = 10
 
@@ -11,6 +11,7 @@ length_callback = 10
 # Path
 class Paths:
     DataBase = "Auxiliary/DataBase/DataBase.db"
+    LearningResources = "Auxiliary/data/LearningResources.pdf"
 
 
 # Email

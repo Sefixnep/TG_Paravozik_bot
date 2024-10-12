@@ -1,0 +1,8 @@
+faiss-cpu==1.8.0.post1
+PyPDF2==3.0.1
+requests==2.32.3
+pandas==2.2.2
+sentence-transformers==3.1.1
+pyTelegramBotAPI==4.22.1
+loguru==0.7.2
+numpy==1.26.4

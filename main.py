@@ -12,7 +12,6 @@ def question(message_tg: telebot.types.Message):
     Message.userSendLogger(message_tg)
     ask_question(message_tg)
 
-
 @bot.callback_query_handler(func=lambda call: True)
 def callback_reception(call: telebot.types.CallbackQuery):
     if call.data not in button.callback_data:  # Если кнопка не найдена (скорее всего из-за перезапуска системы)
