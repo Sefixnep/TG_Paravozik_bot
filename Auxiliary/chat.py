@@ -1,3 +1,5 @@
+from time import sleep
+
 from Auxiliary.utils import *
 from Auxiliary.llm import LLMModel
 
@@ -37,15 +39,22 @@ def ask_question(message_tg: telebot.types.Message):
     bot.register_next_step_handler(botMessage, answer_question(botMessage))
     return True
 
+def ask_question_again(message_tg: telebot.types.Message):
+    clear(None, message_tg)
+
+    botMessage = message_question_ask.line(message_tg, deleting_message=False)
+    bot.register_next_step_handler(botMessage, answer_question(botMessage))
+    return True
+
 
 # # # Answer
 def answer_question(botMessage: telebot.types.Message):
     def wrapper(message_tg: telebot.types.Message):
         nonlocal botMessage
         Message.userSendLogger(message_tg)
-        Message.botDeleteMessage(message_tg)
 
-        botMessage = message_question_answer_processing.line(botMessage)
+        Message.botDeleteMessage(botMessage)
+        botMessage = message_question_answer_processing.line(botMessage, deleting_message=False)
 
         # ML
         try:
@@ -107,8 +116,9 @@ def send_answer(botMessage: telebot.types.Message, data: list, message_history: 
             botMessage = message_email_processing.line(botMessage)
             send_email(email, "Ответ от службы поддержки РЖД", html_content)
 
-            message = Message(f"<b>Сообщение на почту {email} отправлено!</b>", ((button.close,),))
-            message.line(botMessage)
+            botMessage = message_email_success.line(botMessage)
+            sleep(3)
+            Message.botDeleteMessage(botMessage)
         except Exception as exception:
             print(f"Ошибка: {exception}")
 
@@ -143,8 +153,11 @@ message_start = Message("<b>Привет <USERNAME>, это бот Параво�
 # # Ask question
 message_question_ask = Message("<b>Напишите пожалуйста вопрос одним сообщением:</b>",
                                ((button.cancel,),),
-                               button.question_again,
                                func=ask_question)
+
+message_question_ask_again = Message("<b>Напишите пожалуйста вопрос связанный с <u>«РЖД»</u> одним сообщением:</b>",
+                                     ((button.cancel,),), button.question_again,
+                                     func=ask_question_again)
 
 # # Processing
 message_question_answer_processing = Message("<b>Готовим ответ...</b>")
@@ -164,3 +177,6 @@ message_email_processing = Message("<b>Отправляем...</b>")
 # # Error
 message_email_error = Message("<b>Email не найден!</b>",
                               ((button.close,),))
+
+# # Success
+message_email_success = Message(f"<b>Сообщение отправлено!</b>")
