@@ -7,7 +7,11 @@ print("Инициализация модели...")
 llm = LLMModel()
 print("Модель инициализирована!\n")
 
+using_llm_1 = False
+using_llm_2 = False
+
 temp_messages = {}
+
 
 # Custom functions for buttons
 def delete(_, message_tg: telebot.types.Message):
@@ -39,6 +43,7 @@ def ask_question(message_tg: telebot.types.Message):
     bot.register_next_step_handler(botMessage, answer_question(botMessage))
     return True
 
+
 def ask_question_again(message_tg: telebot.types.Message):
     clear(None, message_tg)
 
@@ -50,6 +55,7 @@ def ask_question_again(message_tg: telebot.types.Message):
 # # # Answer
 def answer_question(botMessage: telebot.types.Message):
     def wrapper(message_tg: telebot.types.Message):
+        global using_llm_1, using_llm_2
         nonlocal botMessage
         Message.userSendLogger(message_tg)
 
@@ -59,11 +65,25 @@ def answer_question(botMessage: telebot.types.Message):
         # ML
         try:
             question = message_tg.text
-            answer = llm(question)
-            embeding = llm.get_embedding(question)
 
-            if not llm.is_question_inappropriate(question):
+            while using_llm_1:
+                sleep(3)
+
+            using_llm_1 = True
+            is_valid = not llm.is_question_inappropriate(question)
+            using_llm_1 = False
+
+            while using_llm_2:
+                sleep(3)
+
+            using_llm_2 = True
+            answer = llm(question, is_valid)
+            using_llm_2 = False
+
+            if is_valid:
+                embeding = llm.get_embedding(question)
                 operations.record_QnA(question, answer, embeding)
+
                 Message(answer, ((Button("✉️ Отправить на почту ✉️",
                                          f"{question}_{answer.replace('_', '-')}_send"),),)).line(botMessage)
             else:

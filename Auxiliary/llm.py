@@ -1,17 +1,15 @@
 import os
 import re
 import json
+
 import faiss
 import PyPDF2
 import requests
 import numpy as np
+from sentence_transformers import SentenceTransformer
 
 from Auxiliary import config
 from Auxiliary.DataBase import operations
-from sentence_transformers import SentenceTransformer
-
-
-os.environ['TOGETHER_API_KEY'] = '21d5552e22479067e0e6010f2a0f2a07ac777cd1fe42cb3c612f5faf97e310da'
 
 
 class LLMModel:
@@ -106,8 +104,11 @@ class LLMModel:
 
         return prompt
 
-    def __call__(self, question):
-        prompt = self.generate_prompt(question)
+    def __call__(self, question, is_valid):
+        if is_valid:
+            prompt = self.generate_prompt(question)
+        else:
+            prompt = self.generate_invalid_question_prompt(question)
 
         data = {
             "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
@@ -121,7 +122,7 @@ class LLMModel:
         }
 
         # Получение ответа
-        response_text = self.llm_request(data)
+        response_text = self.llm_request(data, config.LLM_API_KEYS[0])
 
         # Формирование списка источников
         # similar_chunks = self.get_similar_chunks(question)
@@ -137,9 +138,10 @@ class LLMModel:
         prompt = (
             f"Вы помощник, специализирующийся на вопросах, связанных с ОАО 'РЖД'. Оцените следующий вопрос, используя следующие критерии: "
             f"1. Вопрос задан на русском языке. "
-            f"2. Вопрос точно сформулирован. "
-            f"3. Вопрос адекватен и осмыслен в контексте деятельности ОАО 'РЖД'. "
-            f"4. Вопрос не является некорректным, неуместным, оскорбительным или бессмысленным. "
+            f"2. Вопрос явно или неявно связан с деятельностью ОАО 'РЖД' (например, любые упоминания об организации, её услугах, руководстве, работниках, инфраструктуре и т.д.). "
+            f"3. Вопрос не содержит прямых оскорблений, ненормативной лексики или служебных команд (например, таких как '/start', '/help', '/question' и т.д.). "
+            f"4. Вопрос не является системным сообщением, например, 'Напишите, пожалуйста, вопрос одним сообщением' или любым другим сообщением от бота, созданным в результате неправильного использования. "
+            f"Если вопрос связан с РЖД, даже если он кажется нечетко или неформально сформулированным, считайте его соответствующим. "
             f"Вопрос: '{question}'. "
             f"Если вопрос нарушает хотя бы один из этих критериев, ответьте 'да'. Если вопрос соответствует всем критериям, ответьте 'нет'."
         )
@@ -155,9 +157,9 @@ class LLMModel:
             "stop": ["[/INST]", "</s>"]
         }
 
-        result = self.llm_request(data)
+        result = self.llm_request(data, config.LLM_API_KEYS[1])
 
-        return result.lower().startswith('да')
+        return result.lower().startswith('да')  # or question in ("/start", "/question")
 
     def record_qna(self, question, answer):
         # Обновление списков вопросов и ответов
@@ -174,10 +176,25 @@ class LLMModel:
         self.qna_index.add(question_embedding)
 
     @staticmethod
-    def llm_request(data):
+    def generate_invalid_question_prompt(question):
+        # Промпт для LLM модели
+        prompt = (
+            f"Вы помощник, созданный для ответов на вопросы связанных с ОАО 'РЖД'. "
+            f"Вопрос, который следует за словом 'ВОПРОС', неуместен или выходит за рамки вашей компетенции. "
+            f"Тактично объясните пользователю, что данный вопрос не относится к темам, по которым вы можете помочь, "
+            f"и предложите ему задать вопрос, который будет соответствовать вашей роли. "
+            f"Не предоставляйте никакой дополнительной информации по этому вопросу и не делайте предположений. "
+            f"Ответ должен быть вежливым, кратким и направленным на перенаправление к релевантной теме."
+            f"\nВОПРОС:\n{question}"
+        )
+        return prompt
+
+    @staticmethod
+    def llm_request(data, api_key):
         # Подготовка и отправка запроса к API (использование модели Mixtral)
         endpoint = 'https://api.together.xyz/v1/chat/completions'
-        response = requests.post(endpoint, json=data, headers={"Authorization": f"Bearer {os.environ['TOGETHER_API_KEY']}"})
+        response = requests.post(endpoint, json=data,
+                                 headers={"Authorization": f"Bearer {api_key}"})
 
         # Получение ответа и анализ результата
         result = dict(json.loads(response.content))['choices'][0]['message']['content'].strip()
