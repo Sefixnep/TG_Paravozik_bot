@@ -13,28 +13,6 @@ from Auxiliary.DataBase import operations
 bot = telebot.TeleBot(config.BOT_TOKEN, parse_mode='html')
 
 
-# Теги для изменения стиля текста
-# b — Жирный шрифт:
-# i — Курсив:
-# u — Подчеркнутый текст:
-# s — Зачеркнутый текст:
-# code — Моноширинный текст (inline код):
-
-# pre — Моноширинный блок (блок кода). Для указания языка можно использовать формат.
-# Пример:
-# <pre language="python">
-# print("Hello, World!")
-# </pre>
-
-# a href="URL" — Ссылка:
-# Пример:
-# <a href="https://example.com">Ссылка</a>
-
-# tg-spoiler — Скрытый текст (спойлер):
-# Пример:
-# <tg-spoiler>Текст спойлер</tg-spoiler>
-
-
 class Message:
     def __init__(self, text: str, buttons: tuple | None = None, *from_buttons, photo: BinaryIO | None = None,
                  func: Callable = lambda *args: None):
@@ -72,8 +50,6 @@ class Message:
 
     @staticmethod
     def __trueText(text: str, message_tg: telebot.types.Message):
-        # Спецсимволы: https://core.telegram.org/api/entities
-
         decryption = {
             "<ID>": str(message_tg.chat.id),
             "<USERNAME>": str(message_tg.chat.username) if message_tg.chat.username else "User",

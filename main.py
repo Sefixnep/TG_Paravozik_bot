@@ -4,6 +4,8 @@ from Auxiliary.chat import *
 @bot.message_handler(commands=["start"])
 def start(message_tg: telebot.types.Message):
     Message.userSendLogger(message_tg)
+    Message.botDeleteMessage(message_tg)
+
     message_start.line(message_tg)
 
 
@@ -19,7 +21,7 @@ def callback_reception(call: telebot.types.CallbackQuery):
         return None
 
     data = button.callback_data[call.data]
-    commands = ['send']
+    commands = ['send', 'custom']
 
     to_message = None
     from_button = button.get_instance(call.data)
@@ -35,6 +37,16 @@ def callback_reception(call: telebot.types.CallbackQuery):
                 clear(None, call.message)
                 botMessage = message_email_get.line(call.message, deleting_message=False)
                 bot.register_next_step_handler(botMessage, send_answer(botMessage, command_data, call.message))
+
+            elif command == 'custom':
+                if command_data[0] == 'close':
+                    chat_id, message_id = command_data[1:]
+                    temp_message = temp_messages.get(f"{chat_id}_{message_id}", None)
+
+                    if temp_message is not None:
+                        Message.botDeleteMessage(temp_message)
+
+                    Message.botDeleteMessage(call.message)
 
             break
     else:
@@ -55,4 +67,4 @@ if __name__ == '__main__':
     print(f"link: https://t.me/{config.Bot}")
     logger.info(f'{config.Bot} start')
 
-bot.infinity_polling()  # logger_level=None
+bot.infinity_polling(logger_level=None)

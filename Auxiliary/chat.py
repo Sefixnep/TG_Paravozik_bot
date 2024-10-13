@@ -7,6 +7,7 @@ print("Инициализация модели...")
 llm = LLMModel()
 print("Модель инициализирована!\n")
 
+temp_messages = {}
 
 # Custom functions for buttons
 def delete(_, message_tg: telebot.types.Message):
@@ -33,7 +34,6 @@ def delete_clear(*args):
 # # # Ask
 def ask_question(message_tg: telebot.types.Message):
     clear(None, message_tg)
-    Message.botDeleteMessage(message_tg)
 
     botMessage = message_question_ask.line(message_tg, deleting_message=False)
     bot.register_next_step_handler(botMessage, answer_question(botMessage))
@@ -64,10 +64,12 @@ def answer_question(botMessage: telebot.types.Message):
 
             if not llm.is_question_inappropriate(question):
                 operations.record_QnA(question, answer, embeding)
-                Message(answer, ((Button("Отправить",
+                Message(answer, ((Button("✉️ Отправить на почту ✉️",
                                          f"{question}_{answer.replace('_', '-')}_send"),),)).line(botMessage)
             else:
-                Message(answer, ((button.question_again,), (button.close,),)).line(botMessage)
+                custom_close = Button("✖️ Закрыть ✖️", f"close_{message_tg.chat.id}_{message_tg.id}_custom")
+                temp_messages[f"{message_tg.chat.id}_{message_tg.id}"] = message_tg
+                Message(answer, ((button.question_again,), (custom_close,),)).line(botMessage)
 
         except Exception as exception:
             print(f"Ошибка: {exception}")
@@ -135,6 +137,7 @@ button = Button('', '')
 
 # Question
 Button("📝 Задать заново 📝", "question_again")
+Button("❔ Задать вопрос ❔", "ask_question")
 
 # Cancel / close
 Button("✖️ Отменить ✖️", "cancel", func=delete_clear)
@@ -144,15 +147,14 @@ Button("✖️ Закрыть ✖️", "close", func=delete)
 
 # Start
 message_start = Message("<b>Привет <USERNAME>, это бот Паравозик 🚂!</b>\n\n"
-                        "<i>Используй <b>команду в меню</b> чтобы задать вопрос</i>\n"
-                        "<i>Ответ на вопрос вы можете получить на почту</i>\n"
-                        "<i>Чтобы обновить базу знаний используй <b>команду в меню</b></i>")
+                        "<i>Используй <u>команду в меню</u> или <u>кнопку под сообщением</u> чтобы задать вопрос</i>\n"
+                        "<i><b>Ответ на вопрос вы можете получить на почту</b></i>\n", ((button.ask_question,),))
 
 # Question
 
 # # Ask question
 message_question_ask = Message("<b>Напишите пожалуйста вопрос одним сообщением:</b>",
-                               ((button.cancel,),),
+                               ((button.cancel,),), button.ask_question,
                                func=ask_question)
 
 message_question_ask_again = Message("<b>Напишите пожалуйста вопрос связанный с <u>«РЖД»</u> одним сообщением:</b>",
