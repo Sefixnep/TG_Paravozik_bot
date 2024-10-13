@@ -70,6 +70,8 @@ def answer_question(botMessage: telebot.types.Message):
                 sleep(3)
 
             using_llm_1 = True
+            sleep(3)
+
             is_valid = not llm.is_question_inappropriate(question)
             using_llm_1 = False
 
@@ -77,6 +79,8 @@ def answer_question(botMessage: telebot.types.Message):
                 sleep(3)
 
             using_llm_2 = True
+            sleep(3)
+
             answer = llm(question, is_valid)
             using_llm_2 = False
 
